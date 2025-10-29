@@ -2,9 +2,10 @@ import streamlit as st
 import pandas as pd
 import spacy
 import random
+import en_core_web_sm
 
 # Load the NLP model
-nlp = spacy.load("en_core_web_sm")
+nlp = en_core_web_sm.load()
 
 # Load your movie dataset
 movies = pd.read_csv("movies.csv")
@@ -155,3 +156,4 @@ if user_input:
 
 
 #run - streamlit run movie_chatbot_app.py
+
