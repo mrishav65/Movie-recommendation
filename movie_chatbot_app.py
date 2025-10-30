@@ -1,63 +1,69 @@
-import pandas as pd
 import streamlit as st
+import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
-# -----------------------------
 # Load dataset
-# -----------------------------
-movies = pd.read_csv("movies.csv")
+@st.cache_data
+def load_data():
+    df = pd.read_csv("movies.csv")
+    df.columns = df.columns.str.strip()
+    df['Series_Title'] = df['Series_Title'].astype(str)
+    df['Overview'] = df['Overview'].astype(str)
+    df['Genre'] = df['Genre'].astype(str)
+    df['Director'] = df['Director'].astype(str)
+    return df
 
-# Clean column names for safety
-movies.columns = movies.columns.str.strip()
-movies['Genre'] = movies['Genre'].astype(str)
-movies['Title'] = movies['Title'].astype(str)
+movies = load_data()
 
-# Combine genres + titles for better matching
-movies['Combined'] = movies['Title'] + " " + movies['Genre']
+# Combine text features for similarity
+movies['combined_features'] = (
+    movies['Genre'] + " " +
+    movies['Director'] + " " +
+    movies['Overview']
+)
 
-# TF-IDF Vectorizer to understand similarity between movies
+# Vectorize the combined text
 vectorizer = TfidfVectorizer(stop_words='english')
-tfidf_matrix = vectorizer.fit_transform(movies['Combined'])
+tfidf_matrix = vectorizer.fit_transform(movies['combined_features'])
 
-# -----------------------------
-# Function: Recommend movies
-# -----------------------------
-def recommend_movies(user_input):
-    user_input = user_input.lower()
-    
-    # Transform user input to vector
-    user_vec = vectorizer.transform([user_input])
-    
-    # Calculate similarity
-    similarity = cosine_similarity(user_vec, tfidf_matrix)
-    
-    # Get top 5 similar movies
-    indices = similarity[0].argsort()[-5:][::-1]
-    
-    recommended = movies.iloc[indices]['Title'].tolist()
-    
-    if len(recommended) == 0:
-        return ["Sorry, I couldn’t find any similar movies."]
-    return recommended
+# Compute cosine similarity
+similarity = cosine_similarity(tfidf_matrix)
 
-# -----------------------------
 # Streamlit UI
-# -----------------------------
-st.title("🎬 Smart Movie Recommendation Chatbot")
-st.write("Hi! I’m your smart movie bot 🤖 — type a *movie name* or *genre* to get recommendations!")
+st.title("🎥 Movie Recommendation System")
+st.markdown("Get movie recommendations based on your favorite movie!")
 
-user_input = st.text_input("You:", placeholder="e.g. Action, Inception, Comedy...")
+# Dropdown for movie selection
+movie_list = movies['Series_Title'].sort_values().unique()
+selected_movie = st.selectbox("Choose a movie you like:", movie_list)
 
-if user_input:
-    st.subheader("🎥 Recommended Movies:")
-    recos = recommend_movies(user_input)
-    for r in recos:
-        st.write(f"- {r}")
+# Recommendation function
+def recommend(movie_name, n=5):
+    idx = movies[movies['Series_Title'] == movie_name].index[0]
+    distances = similarity[idx]
+    movie_list = sorted(list(enumerate(distances)), reverse=True, key=lambda x: x[1])[1:n+1]
 
-st.markdown("---")
-st.caption("Made with ❤️ by Rishav | Internship Project")
+    recommendations = []
+    for i in movie_list:
+        recommendations.append({
+            "Title": movies.iloc[i[0]].Series_Title,
+            "Genre": movies.iloc[i[0]].Genre,
+            "Rating": movies.iloc[i[0]].IMDB_Rating,
+            "Poster": movies.iloc[i[0]].Poster_Link,
+            "Overview": movies.iloc[i[0]].Overview
+        })
+    return recommendations
 
-#run - streamlit run movie_chatbot_app.py
+# Show recommendations
+if st.button("Show Recommendations"):
+    st.subheader(f"🎬 Movies similar to: {selected_movie}")
+    recs = recommend(selected_movie)
+    for rec in recs:
+        st.markdown(f"### {rec['Title']} ({rec['Rating']}/10 ⭐)")
+        st.image(rec['Poster'], width=200)
+        st.write(f"**Genre:** {rec['Genre']}")
+        st.write(f"**Overview:** {rec['Overview']}")
+        st.write("---")
 
-
+st.caption("Built with ❤️ by Rishav using Streamlit + Machine Learning")
