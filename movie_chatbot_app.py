@@ -3,7 +3,7 @@ import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
-# Load dataset
+
 @st.cache_data
 def load_data():
     df = pd.read_csv("movies.csv")
@@ -16,29 +16,29 @@ def load_data():
 
 movies = load_data()
 
-# Combine text features for similarity
+
 movies['combined_features'] = (
     movies['Genre'] + " " +
     movies['Director'] + " " +
     movies['Overview']
 )
 
-# Vectorize the combined text
+
 vectorizer = TfidfVectorizer(stop_words='english')
 tfidf_matrix = vectorizer.fit_transform(movies['combined_features'])
 
-# Compute cosine similarity
+
 similarity = cosine_similarity(tfidf_matrix)
 
-# Streamlit UI
+
 st.title("🎥 Movie Recommendation System")
 st.markdown("Get movie recommendations based on your favorite movie!")
 
-# Dropdown for movie selection
+
 movie_list = movies['Series_Title'].sort_values().unique()
 selected_movie = st.selectbox("Choose a movie you like:", movie_list)
 
-# Recommendation function
+
 def recommend(movie_name, n=5):
     idx = movies[movies['Series_Title'] == movie_name].index[0]
     distances = similarity[idx]
@@ -55,7 +55,7 @@ def recommend(movie_name, n=5):
         })
     return recommendations
 
-# Show recommendations
+
 if st.button("Show Recommendations"):
     st.subheader(f"🎬 Movies similar to: {selected_movie}")
     recs = recommend(selected_movie)
@@ -67,3 +67,4 @@ if st.button("Show Recommendations"):
         st.write("---")
 
 st.caption("Built with ❤️ by Rishav using Streamlit + Machine Learning")
+
